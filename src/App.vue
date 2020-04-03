@@ -1,4 +1,4 @@
-<template>
+    <template>
       <div id="app">
         <router-view></router-view>
       </div>
@@ -13,18 +13,16 @@
     <style>
     a
       html {
-        background: #7fd4d3;
       }
       body {
-        background: #7fd4d3;
         padding: 20px;
       }
       #app {
         height: 100vh;
+        font-family: montserrat;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-        text-align: center;
-        color: #fff;
+        color: rgb(20, 20, 20);
       }
       .fade-enter-active, .fade-leave-active {
         transition: opacity .5s
