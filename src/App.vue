@@ -23,9 +23,11 @@
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         color: rgb(20, 20, 20);
+        max-width: 1100px;
+        margin: 0 auto;
       }
       .fade-enter-active, .fade-leave-active {
-        transition: opacity .5s
+        transition: opacity 1s
       }
       .fade-enter, .fade-leave-to /* .fade-leave-active in <2.1.8 */ {
         opacity: 0

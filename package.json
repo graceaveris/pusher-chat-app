@@ -16,7 +16,7 @@
     "concurrently": "^5.1.0",
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
-    "pusher": "^3.0.0",
+    "pusher": "^3.0.1",
     "pusher-js": "^5.1.1",
     "vue": "^2.5.2",
     "vue-router": "^3.0.1"

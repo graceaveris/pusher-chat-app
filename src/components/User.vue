@@ -1,14 +1,11 @@
 <template>
+<transition name="fade">
   <div class="user">
    <p>{{user.name}}</p>
   </div>
+</transition>
 </template>
 
-<style scoped>
-.user {
-  font-size: 16px;
-}
-</style>
 
 <script>
 export default {

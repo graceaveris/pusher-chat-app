@@ -1,112 +1,74 @@
 <template>
-  <div class="home">
-
-    <div class="link-bar">
-      <p>Invite friends to chat by sharing this link <a :href="url" target="blank">{{url}}</a></p>
+<div>
+  <div v-if="activeUser.name" class="home">
+    <div class="link-bar padding-1">
+      <h3>Invite friends to chat by sharing this link <a :href="url" target="blank">{{url}}</a></h3>
     </div>
 
-    <div class="feed">
-      <h3>Chat Feed</h3>
+    <div class="feed padding-1">
+      <h1 class="pb-1">Chat Feed</h1>
+      <div class="feed-messages" style="overflow-y: scroll; height:400px; position: relative; bottom:0;">
+        <div v-for="message in messages" :key="message">
+          <Message :message="message" :activeUser="activeUser.name"/>
+        </div>
+      </div>
+      <div class="feed-input">
+        <input type="text" ref="message" placeholder="Enter chat message"/>
+        <button v-on:click="sendMessage()">Send</button>
+      </div>
     </div>
 
-    <div class="users">
-
-      <div class="users-me">
-        <User :user="activeUser" />
-        <form >
-          <input type="text" placeholder="enter new username" @onchange="updateName()"/>
-          <button>submit</button>
-        </form>
+    <div class="users padding-1">
+      <h1 class="pb-1">Users</h1>
+      <div class="users-me pb-1 mb-1">
+        <h2><User :user="activeUser"/></h2>
+        <h2 class="ml-2"> - you </h2>
       </div>
 
       <div class="users-other">
         <div v-for="user in getOtherUsers" :key="user">
-          <User :user="user"/>
+          <h2><User :user="user"/></h2>
        </div>
       </div>
-
     </div>
-
-    <div class="footer">
-      <h3>Footer</h3>
-    </div>
-                <!-- <div>
-                  <button @click="incrementCount()">add</button>
-                </div>
-                <div>
-                  <button @click="setPlayerName()">Add my name</button>
-                </div> -->
   </div>
+  <div v-else class="home-wall">
+   <h1> Add username to enter chatroom</h1>
+    <div>
+      <input type="text" ref="input" placeholder="enter new username"/>
+      <button v-on:click="addName()">submit</button>
+    </div>
+  </div>
+  </div>
+
 </template>
-
-<style scoped>
-
-.home {
-  display: grid;
-  grid-template-areas:
-    'link-bar link-bar link-bar link-bar link-bar link-bar'
-    'feed feed feed feed users users'
-    'footer footer footer footer footer footer';
-  grid-gap: 10px;
-  padding: 10px;
-}
-.link-bar {
-  grid-area: link-bar;
-  background-color: whitesmoke;
-  text-align: center;
-}
-.link-bar a {
-  padding-left: 6px;
-  color: blue;
-}
-
-.feed {
-  grid-area: feed;
-  background-color: whitesmoke;
-  min-height: 60vh;
-}
-.users {
-  grid-area: users;
-  background-color: whitesmoke;
-  min-height: 60vh;
-}
-.users-me {
-  background-color: aquamarine;
-}
-.users-other {
-}
-
-.footer {
-  grid-area: footer;
-  background-color: whitesmoke;
-}
-</style>
 
 <script>
 // Import ChannelDetails component created in diff file
 import ChannelDetails from '@/components/ChannelDetails'
 //components
 import User from '@/components/User'
+import Message from '@/components/Message'
 export default {
   name: 'home',
-  components: { User },
+  components: { User, Message },
   data () {
     return {
-      //PRIVATE DATA (which we recieve from members object or locally)
-      //my game
-      presenceid: null,
-      //PUBLIC DATA (data that is broadcast and shared)
+
       users: [],
-      // This holds the players own details
+      messages: [],
       activeUser: {
         id: null,
         name: null,
       },
+      //channel id
+      presenceid: null,
       //url for current channel
       url: null
     }
   },
   created () {
+    console.log('created entered')
     this.fetchData()
   },
   computed: {
@@ -117,7 +79,7 @@ export default {
     }
   },
   methods: {
-    fetchData () {
+    fetchData () { //WORKING
     // Sets the data instance presenceid variable to the result of the getUniqueId function
     this.presenceid = this.getUniqueId()
     // This checks if there's no presence ID in the URL via the checkPresenceID function and appends the presenceid to the current URL so that we can have the URL end with a parameter
@@ -129,69 +91,111 @@ export default {
     this.url = window.location.href
     // The channel variable is set to to the subscribeToPusher function in ChannelDetails.
     let channel = ChannelDetails.subscribeToPusher()
-
-    //BINDING USER EVENTS TO PUSHER
-    //MEMBER ADDED: Triggered when a new user joins. Exposes the new member object to all other subscribers to save and use.
-    channel.bind('pusher:member_added', newMember => {
-      this.players += 1 //add an extra player to player count
-      console.log('New Member Joined')
-      this.users.push(this.createMember(newMember.id))
-    })
+    console.log(channel)
 
   // SUBSCRIPTION SUCCEEDED: Triggered once a subscription has been made to a presence channel, exposing the members object to the new user
     channel.bind('pusher:subscription_succeeded', members => {
-        console.log('You have joined the channel!')
+       console.log('sub succeed', members)
+        // add own id
+        this.activeUser.id = channel.members.me.id
         // add the existing members
         members.each((member) => {
           //if it is the current user
-          if (member.id === channel.members.me.id) {
             this.users.push(this.createMember(member.id))
-            // adds personal details to non-public data
-            this.activeUser.id = member.id
-            this.activeUser.name = 'Anonymous-' + member.id.substr(2, 5)
-          } else {
-            //all other users
-            this.users.push(this.createMember(member.id))
-          }
+          })
         })
+
+    //MEMBER ADDED: Triggered when a new user joins. Exposes the new member object to all
+    channel.bind('pusher:member_added', newMember => {
+      console.log('sub added', newMember)
+      this.users.push(this.createMember(newMember.id))
+      //in return, user sends their username back
+      this.broadCastName()
     })
 
-    // MEMBER REMOVED: When someone leaves the channel.
+  // MEMBER REMOVED: When someone leaves the channel.
     channel.bind('pusher:member_removed', member => {
-      this.players -= 1
-      if (member.count === 1) {
-        this.secondplayer = false
-      }
-    })
-
-      // CLIENT SEND COUNT: updates the count
-    channel.bind('client-send-username', (res) => { //{data: this.activeUser})
-        this.users.forEach((user, index) => {
-          if (user.id === res.id) {
-              this.users[index].name = res.name
-          }
+      this.users.forEach((user, index) => {
+        if (user.id === member.id) {
+          this.users.splice(index, 1)
+          this.sendAlert(user.name, 'has left the room')
+        }
       })
+
     })
 
-    // CLIENT SEND COUNT: updates the count
-    channel.bind('client-send-count', (res) => {
-        this.count = res.data
-    })
-
-    // CLIENT SEND NAME: updates the name
+  // CLIENT SEND NEWUSER NAME: existing users recieve new name// WORKING!!!!
     channel.bind('client-send-name', (res) => {
-      console.log('entered client-send-name')
-      if (this.userid === 1) {
-        this.users.user2.name = res.data.user2.name
-      } else if (this.userid === 2) {
-        this.users.user1.name = res.data.user1.name
-      }
+      this.users.forEach((user) => {
+        if (user.id === res.id) {
+          user.name = res.name
+        }
+      })
+     })
+
+    channel.bind('client-send-message', (res) => {
+      this.messages.push(res.message)
     })
+  },
+
+///////////////////// LOGIC FOR MEMBER MANAGEMENT /////////////////////
+
+  createMember(id) {
+      const memberObject = {}
+          memberObject.id = id
+          memberObject.name =  ''
+      return memberObject
     },
 
-///////////////////// END OF FETCH /////////////////////
+    addName() {
+      //add it to the users object
+      this.users.forEach((user) => {
+        if (user.id === this.activeUser.id) {
+          user.name = this.$refs.input.value
+        }
+      })
+      //add it to personal details
+      this.activeUser.name = this.$refs.input.value
+      //broadcast new name with corresponding ID
+      let channel = ChannelDetails.subscribeToPusher()
+      channel.trigger('client-send-name', {id: this.activeUser.id, name: this.activeUser.name })
+      //clear fields
+      this.$refs.input.value = ""
+      //send activity alert to the channel
+      this.sendAlert(this.activeUser.name, 'joined the room')
+    },
 
-    //This function simply generates random alphanumeric characters and adds a prefix of id= to the result.
+    broadCastName() {
+      let channel = ChannelDetails.subscribeToPusher()
+      channel.trigger('client-send-name', {id: this.activeUser.id, name: this.activeUser.name })
+    },
+
+//// LOGIC FOR MESSAGE MANAGEMENT //////////////////////////////////
+    sendMessage() {
+      if (this.$refs.message.value) {
+        let channel = ChannelDetails.subscribeToPusher()
+        let newMessage = {}
+        newMessage.message = this.$refs.message.value
+        newMessage.author = this.activeUser.name
+        newMessage.authorId = this.activeUser.id
+        this.messages.push(newMessage)
+        channel.trigger('client-send-message', { message: newMessage})
+
+        this.$refs.message.value = ''
+      }
+    },
+
+    sendAlert(user, alert) {
+      let newMessage = {}
+      newMessage.message = user + ' has ' + alert
+      newMessage.author = "system"
+      newMessage.authorId = 0
+      let channel = ChannelDetails.subscribeToPusher()
+      channel.trigger('client-send-message', { message: newMessage})
+    },
+
+//////// LOGIC FOR CHANNEL AND URL /////////////////////////////////
+    //generates random alphanumeric characters and adds a prefix of id= to the result.
     getUniqueId () {
       return 'id=' + Math.random().toString(36).substr(2, 8)
     },
@@ -208,30 +212,121 @@ export default {
       return id
     },
 
-    createMember(id) {
-    const memberObject = {}
-          memberObject.id = id
-          memberObject.name = 'Anonymous-' + id.substr(2, 5)
-          return memberObject
-    },
-
-    incrementCount () {
-      let channel = ChannelDetails.subscribeToPusher()
-      //incrementing on click
-      this.count++
-      channel.trigger('client-send-count', {data: this.count})
-    },
-
-    updateName () {
-      let channel = ChannelDetails.subscribeToPusher()
-      //adding a name to user
-        if (this.userid === 1) {
-          this.users.user1.name = 'Greg'
-        } else if (this.userid === 2) {
-          this.users.user2.name = 'Jennifer'
-        }
-      channel.trigger('client-send-name', {data: this.users})
-    },
   }
 }
 </script>
+
+<style scoped>
+
+h1 {
+  font-size: 1.8rem;
+  margin: 4px;
+}
+
+h2 {
+  font-size: 1.2rem;
+}
+
+button {
+  padding: 5px 20px;
+  background-color: rgb(12, 156, 137);
+  color: white;
+  font-weight: 600;
+  border: none;
+  border-radius: 30px;
+  font-size: .8rem;
+  margin: 8px;
+}
+
+input {
+  padding: 5px;
+  font-size: .8rem;
+  margin: 8px;
+}
+
+.pb-1 {
+  padding-bottom: 8px;
+}
+
+.pb-2 {
+  padding-bottom: 4px;
+}
+
+.mb-1 {
+  margin-bottom: 8px;
+}
+
+.mb-2 {
+  margin-bottom: 4px;
+}
+
+.ml-2 {
+  margin-left: 8px;
+}
+
+.padding-1 {
+  padding: 20px 25px;
+}
+.padding-2 {
+  padding: 8px;
+}
+.padding-3 {
+  padding: 4px;
+}
+.home-wall {
+  text-align: center;
+  padding: 30px;
+}
+
+.home {
+  display: grid;
+  grid-template-areas:
+    'link-bar link-bar link-bar link-bar link-bar link-bar'
+    'feed feed feed feed users users';
+  grid-gap: 10px;
+  padding: 10px;
+}
+.link-bar {
+  grid-area: link-bar;
+  background-color: whitesmoke;
+  text-align: center;
+}
+.link-bar a {
+  padding-left: 6px;
+  color: rgb(12, 156, 137);
+}
+
+.feed {
+  grid-area: feed;
+  background-color: whitesmoke;
+  min-height: 60vh;
+}
+
+.feed-input {
+  bottom: 0%;
+  width: 100%;
+  padding: 20px;
+}
+
+.feed-input input {
+    width: 80%;
+}
+
+
+.feed-messages {
+  padding-bottom:
+    10px;
+    height: 80%;
+
+}
+.users {
+  grid-area: users;
+  background-color: whitesmoke;
+  min-height: 60vh;
+}
+.users-me {
+  color:rgb(12, 156, 137);
+  display: flex;
+}
+
+</style>
